@@ -1,0 +1,56 @@
+#!/bin/sh
+NOW=`date +%H`
+TIME_NOW=`date +%H:%M:%S`
+DATE=`date +%Y-%m-%d`
+BASE_DIR=/home/db_backup/$DATE/full
+LOG=/root/shellscript/backup.log
+mkdir -p /home/db_backup
+
+if [ "$NOW" -eq '03' ]; then
+        if [ -d $BASE_DIR ]; then
+		echo "$DATE $TIME_NOW	$NOW foler exists" >> $LOG
+        else
+		innobackupex --user=alive --password=happy --use-memory=1G $BASE_DIR --no-timestamp
+                echo "$DATE $TIME_NOW	Create Full Backup Complete" >> $LOG
+        fi
+elif [ "$NOW" -eq '04' ]; then
+	if [ -d $BASE_DIR ]; then
+		INC_DIR=/home/db_backup/$DATE/inc$NOW
+		
+		if [ -d $INC_DIR ]; then
+			echo "$DATE $TIME_NOW	Incremental Backup at $TIME_NOW has exists" >> $LOG
+		
+		else		
+			innobackupex --user=alive --password=happy --use-memory=1G --incremental $INC_DIR --incremental-basedir=$BASE_DIR --no-timestamp
+			echo "$DATE $TIME_NOW	Create Incremental Backup at Time : $TIME_NOW" >> $LOG
+		fi
+	else
+        	echo "$DATE $TIME_NOW	Have not full backup" >> $LOG
+	fi
+elif [ "$NOW" -gt '04' ]; then
+	if [ -d $BASE_DIR ]; then
+		NOW=`date +%H`
+		BEFORE=`expr $NOW - 1`
+		INC_DIR=/home/db_backup/$DATE/inc$NOW
+		
+		if [ "$BEFORE" -lt '10' ]; then
+			BASE_DIR_NEW=/home/db_backup/$DATE/inc0$BEFORE
+		else
+			BASE_DIR_NEW=/home/db_backup/$DATE/inc$BEFORE
+		fi
+		
+		if [ -d $BASE_DIR_NEW ]; then
+			if [ -d $INC_DIR ]; then
+                        	echo "$DATE $TIME_NOW	Incremental Backup at $TIME_NOW has exists" >> $LOG
+			else
+				innobackupex --user=alive --password=happy --use-memory=1G --incremental $INC_DIR --incremental-basedir=$BASE_DIR_NEW --no-timestamp
+	  			echo "$DATE $TIME_NOW	Create Incremental Backup at Time : $TIME_NOW" >> $LOG
+			fi		
+		else
+			echo "$DATE  $TIME_NOW	Have not Incremental Backup at Time : $BEFORE" >> $LOG
+		fi
+	else
+		echo "$DATE $TIME_NOW	Have not Full Backup" >> $LOG
+	fi
+fi
+
